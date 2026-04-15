@@ -20,12 +20,11 @@ A single basicAuth credential protects both endpoints. The htpasswd hash (bcrypt
 embedded in both docker-compose files. Middleware name: `personal-mcp-auth`.
 
 **Username:** `rayo`
-**Password:** `dUBfLyPZQSKpGiWoQMTCwQedtvgg`
-**Base64(`user:pass`):** `cmF5bzpkVUJmTHlQWlFTS3BHaVdvUU1UQ3dRZWR0dmdn`
-**htpasswd hash:** `rayo:$2y$05$bmt9SdT2J3JGXnX6xKRNUefsaaCktwQME86sDW539B02rvqdNYWem`
+**htpasswd hash (bcrypt, committed here):** `rayo:$2y$05$YNclvfhPwZZW4vQkwcgAF..F9G5tN.JkB9j4WuuuFwVkDow4gkZf.`
 
-Store the plaintext password in Infisical or a password manager. Do not commit it anywhere
-besides this README if you want to keep it recoverable — ideally rotate before production.
+The plaintext password and `Authorization: Basic ...` header value are stored out-of-band
+(not in this repo). Use a password manager / Infisical. To rotate, generate a new bcrypt
+hash with `htpasswd -nbB rayo <new-pass>` and update both compose files.
 
 ## Directory layout
 
@@ -105,7 +104,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://monarch.claw.jogeeks.com/mcp
 Authenticated — should return 405 or a JSON-RPC error (405 = GET not allowed on POST
 endpoint, which is expected):
 ```bash
-AUTH="Basic cmF5bzpkVUJmTHlQWlFTS3BHaVdvUU1UQ3dRZWR0dmdn"
+AUTH="Basic <BASE64_USER_PASS>"
 
 curl -sS -H "Authorization: $AUTH" https://bee.claw.jogeeks.com/mcp
 curl -sS -H "Authorization: $AUTH" https://monarch.claw.jogeeks.com/mcp
@@ -138,7 +137,7 @@ If `.mm/` is empty after a restart, Coolify didn't bind the volume correctly —
 
 ### Claude Code (CLI)
 ```bash
-AUTH='Basic cmF5bzpkVUJmTHlQWlFTS3BHaVdvUU1UQ3dRZWR0dmdn'
+AUTH='Basic <BASE64_USER_PASS>'
 
 claude mcp add --transport http monarch \
   https://monarch.claw.jogeeks.com/mcp \
@@ -162,7 +161,7 @@ claude mcp list
    - **Remote MCP server URL:** `https://monarch.claw.jogeeks.com/mcp` (or `bee...`)
    - **Authentication:** choose **Custom header**
    - **Header name:** `Authorization`
-   - **Header value:** `Basic cmF5bzpkVUJmTHlQWlFTS3BHaVdvUU1UQ3dRZWR0dmdn`
+   - **Header value:** `Basic <BASE64_USER_PASS>`
 4. Save. claude.ai will call `initialize` and list the tools — you should see them appear
    under the connector.
 
@@ -178,7 +177,7 @@ use the `mcp-remote` shim:
       "args": [
         "-y", "mcp-remote",
         "https://monarch.claw.jogeeks.com/mcp",
-        "--header", "Authorization: Basic cmF5bzpkVUJmTHlQWlFTS3BHaVdvUU1UQ3dRZWR0dmdn"
+        "--header", "Authorization: Basic <BASE64_USER_PASS>"
       ]
     },
     "bee-remote": {
@@ -186,7 +185,7 @@ use the `mcp-remote` shim:
       "args": [
         "-y", "mcp-remote",
         "https://bee.claw.jogeeks.com/mcp",
-        "--header", "Authorization: Basic cmF5bzpkVUJmTHlQWlFTS3BHaVdvUU1UQ3dRZWR0dmdn"
+        "--header", "Authorization: Basic <BASE64_USER_PASS>"
       ]
     }
   }

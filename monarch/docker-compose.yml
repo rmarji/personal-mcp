@@ -23,7 +23,7 @@ services:
       - traefik.http.services.monarch-mcp.loadbalancer.server.port=8000
       # Shared basic auth middleware (same name on both stacks = Traefik dedupes)
       # Hash below: user=rayo. NOTE the $$ escapes for docker-compose env interpolation.
-      - traefik.http.middlewares.personal-mcp-auth.basicauth.users=rayo:$$2y$$05$$bmt9SdT2J3JGXnX6xKRNUefsaaCktwQME86sDW539B02rvqdNYWem
+      - traefik.http.middlewares.personal-mcp-auth.basicauth.users=rayo:$$2y$$05$$YNclvfhPwZZW4vQkwcgAF..F9G5tN.JkB9j4WuuuFwVkDow4gkZf.
       - traefik.http.middlewares.personal-mcp-auth.basicauth.removeheader=true
       - traefik.http.routers.monarch-mcp.middlewares=personal-mcp-auth@docker
 
