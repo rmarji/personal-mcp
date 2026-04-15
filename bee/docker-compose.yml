@@ -6,14 +6,11 @@ services:
       - BEE_API_TOKEN=${BEE_API_TOKEN}
     command:
       - --stdio
-      - uvx beemcp
+      - uvx --from beemcp --with "mcp[cli]>=1.27.0" beemcp
       - --outputTransport
       - streamableHttp
       - --port
       - "8000"
-      - --stateful
-      - --sessionTimeout
-      - "600000"
     networks:
       - coolify
     labels:
