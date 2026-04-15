@@ -142,16 +142,26 @@ AUTH='Basic <BASE64_USER_PASS>'
 claude mcp add --transport http monarch \
   https://monarch.claw.jogeeks.com/mcp \
   --header "Authorization: $AUTH"
-
-claude mcp add --transport http bee \
-  https://bee.claw.jogeeks.com/mcp \
-  --header "Authorization: $AUTH"
 ```
 
 Verify:
 ```bash
 claude mcp list
 ```
+
+> **Known issue — bee + Claude Code CLI**: `beemcp` (the PyPI package) uses an
+> older `mcp[cli]>=1.4.0` SDK whose `FastMCP` echoes back the client's requested
+> `protocolVersion` on `initialize` without downgrading to a supported one.
+> Claude Code CLI sends `2025-11-25`, which beemcp echoes but then rejects on
+> the follow-up `Mcp-Protocol-Version` header (the actual supported list is
+> `2025-06-18, 2025-03-26, 2024-11-05, 2024-10-07`). Workarounds:
+> - **Claude.ai web connectors** — tolerant of the echo mismatch, works fine.
+> - **Claude Desktop** — use a local `beemcp` or the TypeScript MCP server in
+>   the sibling `bee/` repo; remote usage via `mcp-remote` shim also works.
+> - **Fix upstream** — PR beemcp to pin `mcp[cli]>=1.27.0` or to clamp the
+>   echoed protocol version in its initialize handler.
+>
+> Monarch is unaffected and works directly via `--transport http`.
 
 ### claude.ai (web) — Custom Connectors
 1. Open <https://claude.ai> → **Settings** (gear) → **Connectors**.
