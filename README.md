@@ -9,7 +9,7 @@ over Streamable HTTP, gated by a single Traefik basicAuth middleware.
 | Service | Endpoint                              | Package / Source                                     |
 |---------|---------------------------------------|------------------------------------------------------|
 | Monarch | `https://monarch.claw.jogeeks.com/mcp`| Fork at `rmarji/monarch-mcp-server` (built in image) |
-| Bee     | `https://bee.claw.jogeeks.com/mcp`    | PyPI `beemcp` via `uvx beemcp`                       |
+| Bee     | `https://bee.claw.jogeeks.com/mcp`    | Custom TypeScript MCP in `bee-ts/` (direct Bee API) |
 
 Both services sit on Coolify's default `coolify` Docker network and route via the existing
 Traefik instance. Neither exposes a public port directly.
@@ -163,40 +163,59 @@ claude mcp list
 >
 > Monarch is unaffected at the transport layer and works directly via `--transport http`.
 
-## Known upstream library issues
+## Known issues
 
-Both MCP servers are deployed, reachable, TLS-terminated, auth-gated, and speak
-valid MCP (`initialize` + `tools/list` both pass). Tool calls fail because of
-bugs in the upstream Python libraries they wrap — **not the deployment**.
+### monarch → `PASSWORD_NEEDS_RESET`
+The monarch endpoint is fully deployed and speaks valid MCP, but every
+`tools/call` returns `Error: Failed to authenticate with Monarch Money`. The
+real upstream response body is:
 
-### bee → `api.bee.computer` no longer exists
-`beemcp 0.3.0` hardcodes `https://api.bee.computer` in `beemcp/bee.py`, but Bee
-has moved their developer API to `app-api-developer.ce.bee.amazon.dev`.
-`api.bee.computer` returns NXDOMAIN in public DNS, so every tool call fails with
-`NameResolutionError: Failed to resolve 'api.bee.computer'`. Fixes, in order of
-effort:
+> `"We've detected that your current password may have been involved in an
+> external data breach and is risky to use. To protect your financial
+> information, please reset your password, then use the new password to log
+> in."` (`error_code: PASSWORD_NEEDS_RESET`)
 
-1. **Fork beemcp** and replace `base_url` with the Amazon developer API host,
-   then rebuild the image.
-2. **Use the local TypeScript bee MCP server** in the sibling `bee/` repo
-   (mcp/server.ts) — it wraps `bee proxy`, which uses the correct endpoint.
-3. **Wait for upstream** to release a fix.
+`monarchmoneycommunity` surfaces this as generic `HTTP Code 404: Not Found`
+because it falls into the fallback branch when the response has a body but
+non-200 status. **Fix**: reset your Monarch password in the web app, then
+update `MONARCH_PASSWORD` in the Coolify env vars on the `monarch-mcp`
+application. No code changes needed.
 
-### monarch → `LoginFailedException HTTP Code 404`
-`monarchmoneycommunity 1.3.0` (the maintained community fork) currently fails
-fresh logins with HTTP 404 from `POST https://api.monarch.com/auth/login/`.
-This reproduces locally outside Coolify — it is **not a deployment bug**. Only
-cached sessions survive (saved session pickles from earlier builds still work
-until they expire).
+### bee: why we don't use `beemcp`
+The PyPI `beemcp 0.3.0` package hardcodes `https://api.bee.computer` as the
+API base URL. That hostname no longer resolves in public DNS — Bee moved to
+`app-api-developer.ce.bee.amazon.dev` (behind a private CA cert). Running
+`beemcp` directly fails every tool call with
+`NameResolutionError: Failed to resolve 'api.bee.computer'`.
 
-Fixes, in order of effort:
-1. Pin a newer release once upstream ships it (check
-   https://github.com/bradleyseanf/monarchmoneycommunity for updates).
-2. Seed `/app/.mm/mm_session.pickle` from a working local login (scp into the
-   Coolify-managed `monarch-session` volume), which bypasses the broken login
-   path until the session expires.
-3. Fork and patch the login flow to match whatever headers / routing
-   Monarch's web app currently requires.
+Instead, this repo ships a small TypeScript MCP server in `bee-ts/`:
+
+- Wraps the Bee REST API directly with `undici`
+- Bundles the Bee private CA cert (`bee-ca.pem`) so Node trusts the TLS chain
+- Uses the `BEE_API_TOKEN` env var (same token `bee status` prints)
+- Registered with `@modelcontextprotocol/sdk >=1.29` so it negotiates protocol
+  versions correctly (beemcp's FastMCP echoes `2025-11-25` but then rejects
+  follow-ups with that header)
+
+Nine tools exposed: `bee_me`, `bee_now`, `bee_facts_list`, `bee_fact_get`,
+`bee_conversations_list`, `bee_conversation_get`, `bee_todos_list`,
+`bee_daily`, `bee_search`. Verified end-to-end — tool calls return real Bee
+data from the Amazon developer API.
+
+### Claude Code CLI `claude mcp list` health check is flaky
+`claude mcp list` occasionally shows remote HTTP MCP servers as `✗ Failed to
+connect` even though the actual tool calls work fine at runtime. The health
+check uses a 30-second connection probe that can spuriously time out on
+cold-started supergateway containers. Solutions:
+
+- **Ignore the list output** and invoke tools directly — they work.
+- **Warm the containers first** with a curl `initialize` before running
+  `claude mcp list`.
+- **Restart the Claude Code session** after registering a new remote MCP
+  server so tools are re-enumerated.
+
+Confirmed working via direct curl + `mcp__*` tool calls through Claude Code's
+MCP bridge; only the `claude mcp list` health check is unreliable.
 
 ### claude.ai (web) — Custom Connectors
 1. Open <https://claude.ai> → **Settings** (gear) → **Connectors**.
