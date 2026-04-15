@@ -11,6 +11,9 @@ services:
       - streamableHttp
       - --port
       - "8000"
+      - --stateful
+      - --sessionTimeout
+      - "600000"
     networks:
       - coolify
     labels:
