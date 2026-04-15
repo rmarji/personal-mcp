@@ -3,10 +3,9 @@
 # Base image ships with uv + uvx preinstalled.
 FROM supercorp/supergateway:3.4.3-uvx
 
-# Install git (needed to clone the fork at build time)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Install git (needed to clone the fork at build time).
+# supercorp/supergateway:uvx is Alpine-based — use apk, not apt-get.
+RUN apk add --no-cache git ca-certificates bash
 
 WORKDIR /app
 
