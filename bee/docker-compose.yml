@@ -1,0 +1,31 @@
+services:
+  bee-mcp:
+    image: supercorp/supergateway:3.4.3-uvx
+    restart: unless-stopped
+    environment:
+      - BEE_API_TOKEN=${BEE_API_TOKEN}
+    command:
+      - --stdio
+      - uvx beemcp
+      - --outputTransport
+      - streamableHttp
+      - --port
+      - "8000"
+    networks:
+      - coolify
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.bee-mcp.rule=Host(`bee.claw.jogeeks.com`)
+      - traefik.http.routers.bee-mcp.entrypoints=https
+      - traefik.http.routers.bee-mcp.tls=true
+      - traefik.http.routers.bee-mcp.tls.certresolver=letsencrypt
+      - traefik.http.routers.bee-mcp.service=bee-mcp
+      - traefik.http.services.bee-mcp.loadbalancer.server.port=8000
+      # Same shared middleware as the monarch stack — Traefik dedupes by name.
+      - traefik.http.middlewares.personal-mcp-auth.basicauth.users=rayo:$$2y$$05$$bmt9SdT2J3JGXnX6xKRNUefsaaCktwQME86sDW539B02rvqdNYWem
+      - traefik.http.middlewares.personal-mcp-auth.basicauth.removeheader=true
+      - traefik.http.routers.bee-mcp.middlewares=personal-mcp-auth@docker
+
+networks:
+  coolify:
+    external: true
