@@ -1,0 +1,25 @@
+services:
+  bee-ts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - BEE_API_TOKEN=${BEE_API_TOKEN}
+    networks:
+      - coolify
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.bee-mcp.rule=Host(`bee.claw.jogeeks.com`)
+      - traefik.http.routers.bee-mcp.entrypoints=https
+      - traefik.http.routers.bee-mcp.tls=true
+      - traefik.http.routers.bee-mcp.tls.certresolver=letsencrypt
+      - traefik.http.routers.bee-mcp.service=bee-mcp
+      - traefik.http.services.bee-mcp.loadbalancer.server.port=8000
+      - traefik.http.middlewares.personal-mcp-auth.basicauth.users=rayo:$2y$05$YNclvfhPwZZW4vQkwcgAF..F9G5tN.JkB9j4WuuuFwVkDow4gkZf.
+      - traefik.http.middlewares.personal-mcp-auth.basicauth.removeheader=true
+      - traefik.http.routers.bee-mcp.middlewares=personal-mcp-auth@docker
+
+networks:
+  coolify:
+    external: true

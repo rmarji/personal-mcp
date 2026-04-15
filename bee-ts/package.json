@@ -1,0 +1,20 @@
+{
+  "name": "bee-ts-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript bee MCP server (replaces beemcp which is broken upstream)",
+  "scripts": {
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "undici": "^7.2.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
