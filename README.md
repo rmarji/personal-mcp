@@ -161,7 +161,42 @@ claude mcp list
 > - **Fix upstream** — PR beemcp to pin `mcp[cli]>=1.27.0` or to clamp the
 >   echoed protocol version in its initialize handler.
 >
-> Monarch is unaffected and works directly via `--transport http`.
+> Monarch is unaffected at the transport layer and works directly via `--transport http`.
+
+## Known upstream library issues
+
+Both MCP servers are deployed, reachable, TLS-terminated, auth-gated, and speak
+valid MCP (`initialize` + `tools/list` both pass). Tool calls fail because of
+bugs in the upstream Python libraries they wrap — **not the deployment**.
+
+### bee → `api.bee.computer` no longer exists
+`beemcp 0.3.0` hardcodes `https://api.bee.computer` in `beemcp/bee.py`, but Bee
+has moved their developer API to `app-api-developer.ce.bee.amazon.dev`.
+`api.bee.computer` returns NXDOMAIN in public DNS, so every tool call fails with
+`NameResolutionError: Failed to resolve 'api.bee.computer'`. Fixes, in order of
+effort:
+
+1. **Fork beemcp** and replace `base_url` with the Amazon developer API host,
+   then rebuild the image.
+2. **Use the local TypeScript bee MCP server** in the sibling `bee/` repo
+   (mcp/server.ts) — it wraps `bee proxy`, which uses the correct endpoint.
+3. **Wait for upstream** to release a fix.
+
+### monarch → `LoginFailedException HTTP Code 404`
+`monarchmoneycommunity 1.3.0` (the maintained community fork) currently fails
+fresh logins with HTTP 404 from `POST https://api.monarch.com/auth/login/`.
+This reproduces locally outside Coolify — it is **not a deployment bug**. Only
+cached sessions survive (saved session pickles from earlier builds still work
+until they expire).
+
+Fixes, in order of effort:
+1. Pin a newer release once upstream ships it (check
+   https://github.com/bradleyseanf/monarchmoneycommunity for updates).
+2. Seed `/app/.mm/mm_session.pickle` from a working local login (scp into the
+   Coolify-managed `monarch-session` volume), which bypasses the broken login
+   path until the session expires.
+3. Fork and patch the login flow to match whatever headers / routing
+   Monarch's web app currently requires.
 
 ### claude.ai (web) — Custom Connectors
 1. Open <https://claude.ai> → **Settings** (gear) → **Connectors**.
